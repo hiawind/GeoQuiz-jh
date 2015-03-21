@@ -1,6 +1,5 @@
 package com.js.android.geoquiz;
 
-//import android.R;
 import android.support.v7.app.ActionBarActivity;
 import android.annotation.SuppressLint;
 import android.os.Bundle;
