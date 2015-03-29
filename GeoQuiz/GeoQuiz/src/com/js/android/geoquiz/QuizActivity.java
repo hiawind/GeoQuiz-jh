@@ -1,8 +1,9 @@
 package com.js.android.geoquiz;
 
-//import android.R;
 import android.support.v7.app.ActionBarActivity;
+import android.annotation.TargetApi;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
@@ -18,6 +19,7 @@ public class QuizActivity extends ActionBarActivity {
 	
 	private static final String TAG = "QuizActivity";
 	private static final String KEY_INDEX = "index";
+	private static final String KEY_CHEATER = "cheat";
 	
 	private Button mTrueButton;
 	private Button mFalseButton;
@@ -39,7 +41,17 @@ public class QuizActivity extends ActionBarActivity {
 			new TrueFalse(R.string.question_asia, true),
 	};
 	
+	private boolean[] mIsCheaterBank = {
+			false,
+			false,
+			false,
+			false,
+			false
+	};
+	
 	private int mCurrentIndex = 0;
+	//private int mCheatIndex = 0;
+	//private boolean mIsCheater;
 	
 	private void updateQuestion() {
 		Log.d(TAG, "updateQuestion, mCurrentIndex: " + mCurrentIndex);
@@ -53,21 +65,31 @@ public class QuizActivity extends ActionBarActivity {
 		
 		int messageResId = 0;
 		
-		if(userPressedTrue == answerIsTrue) {
-			messageResId = R.string.correct_toast;
-		}
-		else {
-			messageResId = R.string.incorrect_toast;
+		if(mIsCheaterBank[mCurrentIndex]) {
+			messageResId = R.string.judgment_toast;
+		} else {
+			if(userPressedTrue == answerIsTrue) {
+				messageResId = R.string.correct_toast;
+			}
+			else {
+				messageResId = R.string.incorrect_toast;
+			}
 		}
 		
 		Toast.makeText(this, messageResId, Toast.LENGTH_SHORT).show();
 	}
 	
+	@TargetApi(11)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Log.d(TAG, "onCreate(Bundle) called");
         setContentView(R.layout.activity_quiz);
+        
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+        	android.app.ActionBar actionBar = getActionBar();
+        	actionBar.setSubtitle("Bodies of Water");
+        }
         
         mQuestionTextView = (TextView)findViewById(R.id.question_text_view);
         int question = mQuestionBank[mCurrentIndex].getQuestion();
@@ -97,7 +119,8 @@ public class QuizActivity extends ActionBarActivity {
 			@Override
 			public void onClick(View arg0) {
 				// TODO Auto-generated method stub
-				//Toast.makeText(QuizActivity.this, R.string.incorrect_toast, Toast.LENGTH_SHORT).show();
+				//Toast.makeText(QuizActivity.this, 
+				//R.string.incorrect_toast, Toast.LENGTH_SHORT).show();
 				checkAnswer(true);
 			}
 		});
@@ -108,7 +131,8 @@ public class QuizActivity extends ActionBarActivity {
 			@Override
 			public void onClick(View arg0) {
 				// TODO Auto-generated method stub
-				//Toast.makeText(QuizActivity.this, R.string.correct_toast, Toast.LENGTH_SHORT).show();
+				//Toast.makeText(QuizActivity.this, 
+				//R.string.correct_toast, Toast.LENGTH_SHORT).show();
 				checkAnswer(false);
 			}
 		});
@@ -125,6 +149,10 @@ public class QuizActivity extends ActionBarActivity {
 				mCurrentIndex = (mCurrentIndex + 1) % mQuestionBank.length;
 				
 				Log.d(TAG, "next button process: mCurrentIndex: " + mCurrentIndex);
+				
+				// 2015.3.28:Users can press Next until the question 
+				// they cheated on comes back around.
+				//mIsCheaterBank[mCurrentIndex] = false;
 				
 				updateQuestion();
 			}
@@ -146,12 +174,15 @@ public class QuizActivity extends ActionBarActivity {
 				
 				Log.d(TAG, "prev button process: mCurrentIndex: " + mCurrentIndex);
 				
+				//mIsCheaterBank[mCurrentIndex] = false;
+				
 				updateQuestion();
 			}
 		});
         
         if(savedInstanceState != null) {
         	mCurrentIndex = savedInstanceState.getInt(KEY_INDEX, 0);
+        	mIsCheaterBank[mCurrentIndex] = savedInstanceState.getBoolean(KEY_CHEATER);
         }
         
         mCheatButton = (Button)findViewById(R.id.cheat_button);
@@ -160,10 +191,11 @@ public class QuizActivity extends ActionBarActivity {
 			@Override
 			public void onClick(View arg0) {
 				// TODO Auto-generated method stub
+				
 				Intent i = new Intent(QuizActivity.this, CheatActivity.class);
 				boolean answerIsTrue = mQuestionBank[mCurrentIndex].isTrueQuestion();
 				i.putExtra(CheatActivity.EXTRA_ANSWER_IS_TRUE, answerIsTrue);
-				startActivity(i);
+				startActivityForResult(i, 0);
 			}
 		});
         
@@ -175,6 +207,7 @@ public class QuizActivity extends ActionBarActivity {
     	super.onSaveInstanceState(savedInstanceState);
     	Log.i(TAG, "OnSaveInstanceState");
     	savedInstanceState.putInt(KEY_INDEX, mCurrentIndex);
+    	savedInstanceState.putBoolean(KEY_CHEATER, mIsCheaterBank[mCurrentIndex]);
     }
     
     @Override
@@ -225,5 +258,15 @@ public class QuizActivity extends ActionBarActivity {
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+    
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    	if(data == null)
+    	{
+    		return;
+    	}
+    	
+    	mIsCheaterBank[mCurrentIndex] = data.getBooleanExtra(CheatActivity.EXTRA_ANSWER_SHOWN, false);
     }
 }
